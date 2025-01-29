@@ -12,7 +12,7 @@ const connection = mysql.createConnection({
 // **GET** - Retrieve all users
 fastify.get('/users', async (request, reply) => {
   try {
-    connection.query('select * from users_tbl;', (err, results) => {
+    connection.query('SELECT * FROM users_tbl;', (err, results) => {
       if (err) {
         reply.status(500).send({ error: 'Database error', details: err.message });
       } else {
@@ -49,7 +49,7 @@ fastify.post('/users', async (request, reply) => {
 
 // Start Fastify server and use Render's provided PORT variable
 const PORT = process.env.PORT || 3001; // Fallback to 3001 if PORT is not set
-fastify.listen(PORT, (err, address) => {
+fastify.listen({ port: PORT }, (err, address) => {  // Notice the object format here
   if (err) {
     fastify.log.error(err);
     process.exit(1);
