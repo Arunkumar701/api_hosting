@@ -1,7 +1,7 @@
 const fastify = require('fastify')({ logger: true });
 const mysql = require('mysql2');
 
-// Create MySQL connection (with Promisified queries)
+// Create MySQL connection
 const connection = mysql.createConnection({
   host: 'localhost',
   user: 'ak',
@@ -9,24 +9,16 @@ const connection = mysql.createConnection({
   database: 'mobile_recharge_db'
 });
 
-// Promisify connection query to use async/await
-const query = (sql, params) => {
-  return new Promise((resolve, reject) => {
-    connection.query(sql, params, (err, results) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(results);
-      }
-    });
-  });
-};
-
 // **GET** - Retrieve all users
 fastify.get('/users', async (request, reply) => {
   try {
-    const results = await query('SELECT * FROM users_tbl;');
-    reply.send(results);
+    connection.query('select * from users_tbl;', (err, results) => {
+      if (err) {
+        reply.status(500).send({ error: 'Database error', details: err.message });
+      } else {
+        reply.send(results);
+      }
+    });
   } catch (err) {
     reply.status(500).send({ error: 'Database error', details: err.message });
   }
@@ -42,21 +34,22 @@ fastify.post('/users', async (request, reply) => {
   }
 
   try {
-    const queryStr = 'INSERT INTO users_tbl (email_id, user_name, pass_word, access_key) VALUES (?, ?, ?, UUID())';
-    const results = await query(queryStr, [email_id, user_name, pass_word]);
-    reply.status(201).send({ message: 'User created', userId: results.insertId });
+    const query = 'INSERT INTO users_tbl (email_id, user_name, pass_word, access_key) VALUES (?, ?, ?, UUID())';
+    connection.query(query, [email_id, user_name, pass_word], (err, results) => {
+      if (err) {
+        reply.status(500).send({ error: 'Database error', details: err.message });
+      } else {
+        reply.status(201).send({ message: 'User created', userId: results.insertId });
+      }
+    });
   } catch (err) {
     reply.status(500).send({ error: 'Database error', details: err.message });
   }
 });
 
-// Root route (remove or update if unnecessary)
-fastify.get("/", async (request, reply) => {
-  return { "mysql": "api hit" };
-});
-
-// Start Fastify server
-fastify.listen({ port: 3001 }, (err, address) => {
+// Start Fastify server and use Render's provided PORT variable
+const PORT = process.env.PORT || 3001; // Fallback to 3001 if PORT is not set
+fastify.listen(PORT, (err, address) => {
   if (err) {
     fastify.log.error(err);
     process.exit(1);
